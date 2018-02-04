@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	addr       = flag.String("addr", "s2.ripple.com:443", "wss service address")
-	acct       = flag.String("account", "", "ripple address")
-	checkpoint = flag.String("checkpoint", "checkpoint", "file contains the last examined transaction id")
-	lastN      = flag.Int64("last_n", -1, "show the last N transactions only")
+	addr       = flag.String("addr", "s2.ripple.com:443", "WSS service address")
+	acct       = flag.String("account", "", "Ripple address")
+	checkpoint = flag.String("checkpoint", "checkpoint", "File contains the last examined transaction id")
+	resume     = flag.Bool("resume", false, "If true, resume from checkpoint; else from latest transaction.")
+	lastN      = flag.Int64("last_n", -1, "Show the last N transactions only")
 )
 
 type AccountInfoRequest struct {
@@ -53,9 +54,17 @@ func NewTxRequest(transaction string) *TxRequest {
 func send(c *websocket.Conn, r interface{}) error {
 	message, err := json.Marshal(r)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	return c.WriteMessage(websocket.TextMessage, message)
+}
+
+func receive(c *websocket.Conn) (interface{}, error) {
+	var i interface{}
+	if err := c.ReadJSON(&i); err != nil {
+		return i, err
+	}
+	return i, nil
 }
 
 // "meta": {
@@ -76,9 +85,9 @@ func send(c *websocket.Conn, r interface{}) error {
 //       ],
 // }
 func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
-	var i interface{}
-	if err := c.ReadJSON(&i); err != nil {
-		log.Fatal("ReadJSON failed: ", err)
+	i, err := receive(c)
+	if err != nil {
+		return "", err
 	}
 	m := i.(map[string]interface{})
 	b, _ := json.MarshalIndent(m, "", "  ")
@@ -105,15 +114,15 @@ func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
 }
 
 // account_data: map[Balance:2154803734620 LedgerEntryType:AccountRoot OwnerCount:10 PreviousTxnLgrSeq:3.6147383e+07 index:A3AA57D945E845DF258BE00D4800D0372E6292C61B06AA897C09E3D15B2DCE26 Account:rspwpmBx2BhveK3Maoj29dNiSwCjZ2Vf6H PreviousTxnID:C17C9F1144CE4900A313AB5FE724712A53DF62F6FF488ACFC12371D08F8F3FED Sequence:3544 Flags:0]
-func previousTxnIdInAccountData(c *websocket.Conn) string {
-	var i interface{}
-	if err := c.ReadJSON(&i); err != nil {
-		log.Fatal("ReadJSON failed: ", err)
+func previousTxnIdInAccountData(c *websocket.Conn) (string, error) {
+	i, err := receive(c)
+	if err != nil {
+		return "", err
 	}
 	m := i.(map[string]interface{})
 	result := m["result"].(map[string]interface{})
 	accountData := result["account_data"].(map[string]interface{})
-	return accountData["PreviousTxnID"].(string)
+	return accountData["PreviousTxnID"].(string), nil
 }
 
 func main() {
@@ -132,46 +141,43 @@ func main() {
 	}
 	defer c.Close()
 
-	if *checkpoint != "" {
-		if content, err := ioutil.ReadFile(*checkpoint); err != nil {
+	var (
+		txID  string
+		count int64
+	)
+	if *resume {
+		content, err := ioutil.ReadFile(*checkpoint)
+		if err != nil {
 			log.Fatal(err)
 		}
-		id := string(content)
-		if id == "" {
+		if len(content) == 0 {
 			log.Fatal("Emtpy ", *checkpoint)
 		}
-		if err := send(c, NewTxRequest(id)); err != nil {
-			log.Fatal(err)
-		}
+		txID = string(content)
 	} else {
 		if err := send(c, NewAccountInfoRequest(*acct)); err != nil {
 			log.Fatal(err)
 		}
 
-		if err := send(c, NewTxRequest(previousTxnIdInAccountData(c))); err != nil {
+		if txID, err = previousTxnIdInAccountData(c); err != nil {
 			log.Fatal(err)
 		}
 	}
-	var (
-		prevId string
-		count  int64
-	)
 	for {
-		id, err := previousTxnIdAffectsAccountRoot(c)
+		if err := send(c, NewTxRequest(txID)); err != nil {
+			log.Fatal(err)
+		}
+		txID, err := previousTxnIdAffectsAccountRoot(c)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(prevId)
-		if err := ioutil.WriteFile(*checkpoint, []byte(prevId), 0644); err != nil {
+		fmt.Println(txID)
+		if err := ioutil.WriteFile(*checkpoint, []byte(txID), 0644); err != nil {
 			log.Fatal(err)
 		}
 		count++
 		if *lastN > 0 && count > *lastN {
 			break
 		}
-		if err := send(c, NewTxRequest(id)); err != nil {
-			log.Fatal(err)
-		}
-		prevId = id
 	}
 }
