@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/url"
 
 	"github.com/gorilla/websocket"
+	"github.com/r0bertz/ripple/wss"
 )
 
 var (
@@ -51,22 +51,6 @@ func NewTxRequest(transaction string) *TxRequest {
 	}
 }
 
-func send(c *websocket.Conn, r interface{}) error {
-	message, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	return c.WriteMessage(websocket.TextMessage, message)
-}
-
-func receive(c *websocket.Conn) (interface{}, error) {
-	var i interface{}
-	if err := c.ReadJSON(&i); err != nil {
-		return i, err
-	}
-	return i, nil
-}
-
 // "meta": {
 // 	"AffectedNodes": [
 // 		{
@@ -85,7 +69,7 @@ func receive(c *websocket.Conn) (interface{}, error) {
 //       ],
 // }
 func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
-	i, err := receive(c)
+	i, err := wss.Receive(c)
 	if err != nil {
 		return "", err
 	}
@@ -115,7 +99,7 @@ func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
 
 // account_data: map[Balance:2154803734620 LedgerEntryType:AccountRoot OwnerCount:10 PreviousTxnLgrSeq:3.6147383e+07 index:A3AA57D945E845DF258BE00D4800D0372E6292C61B06AA897C09E3D15B2DCE26 Account:rspwpmBx2BhveK3Maoj29dNiSwCjZ2Vf6H PreviousTxnID:C17C9F1144CE4900A313AB5FE724712A53DF62F6FF488ACFC12371D08F8F3FED Sequence:3544 Flags:0]
 func previousTxnIdInAccountData(c *websocket.Conn) (string, error) {
-	i, err := receive(c)
+	i, err := wss.Receive(c)
 	if err != nil {
 		return "", err
 	}
@@ -132,15 +116,8 @@ func main() {
 		log.Fatal("--account no set")
 	}
 
-	u := url.URL{Scheme: "wss", Host: *addr}
-	log.Printf("connecting to %s", u.String())
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
+	c, _, err := wss.Connect(*addr)
 	defer c.Close()
-
 	var (
 		txID  string
 		count int64
@@ -155,7 +132,7 @@ func main() {
 		}
 		txID = string(content)
 	} else {
-		if err := send(c, NewAccountInfoRequest(*acct)); err != nil {
+		if err := wss.Send(c, NewAccountInfoRequest(*acct)); err != nil {
 			log.Fatal(err)
 		}
 
@@ -164,7 +141,7 @@ func main() {
 		}
 	}
 	for {
-		if err := send(c, NewTxRequest(txID)); err != nil {
+		if err := wss.Send(c, NewTxRequest(txID)); err != nil {
 			log.Fatal(err)
 		}
 		txID, err := previousTxnIdAffectsAccountRoot(c)
