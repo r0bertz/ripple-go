@@ -74,8 +74,6 @@ func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
 		return "", err
 	}
 	m := i.(map[string]interface{})
-	b, _ := json.MarshalIndent(m, "", "  ")
-	fmt.Printf("%s\n", b)
 	result := m["result"].(map[string]interface{})
 	meta := result["meta"].(map[string]interface{})
 	affectedNodes := meta["AffectedNodes"].([]interface{})
@@ -89,15 +87,25 @@ func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
 			}
 			ff := m.(map[string]interface{})
 			if s["LedgerEntryType"].(string) == "AccountRoot" && ff["Account"] == *acct {
-				fmt.Println(ff["Balance"])
 				return s["PreviousTxnID"].(string), nil
 			}
 		}
 	}
+	b, _ := json.MarshalIndent(m, "", "  ")
 	return "", fmt.Errorf("No previous tx id: %s", b)
 }
 
-// account_data: map[Balance:2154803734620 LedgerEntryType:AccountRoot OwnerCount:10 PreviousTxnLgrSeq:3.6147383e+07 index:A3AA57D945E845DF258BE00D4800D0372E6292C61B06AA897C09E3D15B2DCE26 Account:rspwpmBx2BhveK3Maoj29dNiSwCjZ2Vf6H PreviousTxnID:C17C9F1144CE4900A313AB5FE724712A53DF62F6FF488ACFC12371D08F8F3FED Sequence:3544 Flags:0]
+// account_data: map[
+//	Balance:2154803734620
+//	LedgerEntryType:AccountRoot
+//	OwnerCount:10
+//	PreviousTxnLgrSeq:3.6147383e+07
+//	index:A3AA57D945E845DF258BE00D4800D0372E6292C61B06AA897C09E3D15B2DCE26
+//	Account:rspwpmBx2BhveK3Maoj29dNiSwCjZ2Vf6H
+//	PreviousTxnID:C17C9F1144CE4900A313AB5FE724712A53DF62F6FF488ACFC12371D08F8F3FED
+//	Sequence:3544
+//	Flags:0
+// ]
 func previousTxnIdInAccountData(c *websocket.Conn) (string, error) {
 	i, err := wss.Receive(c)
 	if err != nil {
@@ -144,7 +152,7 @@ func main() {
 		if err := wss.Send(c, NewTxRequest(txID)); err != nil {
 			log.Fatal(err)
 		}
-		txID, err := previousTxnIdAffectsAccountRoot(c)
+		txID, err = previousTxnIdAffectsAccountRoot(c)
 		if err != nil {
 			log.Fatal(err)
 		}
