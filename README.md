@@ -1,2 +1,3 @@
 # ripple
-Ripple related scripts
+
+Ripple related go libraries.

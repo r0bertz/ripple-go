@@ -1,54 +1,84 @@
-package main
+package tx
 
-import (
-	"encoding/json"
-	"flag"
-	"fmt"
-	"log"
+type Node map[string]map[string]interface{}
 
-	"github.com/r0bertz/ripple/wss"
-)
-
-var (
-	addr = flag.String("addr", "s2.ripple.com:443", "wss service address")
-	tx   = flag.String("tx", "", "ripple transaction")
-)
-
-type TxRequest struct {
-	Command     string `json:"command"`
-	Transaction string `json:"transaction"`
-	Binary      bool   `json:"binary"`
+type Meta struct {
+	AffectedNodes     []Node
+	TransactionIndex  uint32
+	TransactionResult string
 }
 
-func NewTxRequest(transaction string) *TxRequest {
-	return &TxRequest{
-		Command:     "tx",
-		Transaction: transaction,
-		Binary:      false,
-	}
+type Transaction struct {
+	Account            string
+	Fee                string
+	Flags              uint32
+	LastLedgerSequence uint32
+	OfferSequence      uint32
+	Sequence           uint32
+	SigningPubKey      string
+	TransactionType    string
+	TxnSignature       string
+	Date               uint32
+	Hash               string
+	Ledger_index       uint32
+	Meta               Meta
+	Validated          bool
 }
 
-func main() {
-	flag.Parse()
+type TransactionResponse struct {
+	Result Transaction
+	Status string
+	Type   string
+}
 
-	if *tx == "" {
-		log.Fatal("--tx not set")
-	}
+type NodeCommon struct {
+	LedgerEntryType   string
+	LedgerIndex       string
+	PreviousTxnID     string
+	PreviousTxnLgrSeq uint32
+}
 
-	c, _, err := wss.Connect(*addr)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
-	defer c.Close()
+type Balance struct {
+	Currency string
+	Issuer   string
+	Value    string
+}
 
-	if err := wss.Send(c, NewTxRequest(*tx)); err != nil {
-		log.Fatal(err)
-	}
-	i, err := wss.Receive(c)
-	if err != nil {
-		log.Fatal(err)
-	}
-	m := i.(map[string]interface{})
-	b, _ := json.MarshalIndent(m, "", "  ")
-	fmt.Println(string(b))
+type RippleStateFinalFields struct {
+	Balance   Balance
+	Flags     uint32
+	HighLimit Balance
+	HighNode  string
+	LowLimit  Balance
+	LowNode   string
+}
+
+type RippleStatePreviousFields struct {
+	Balance Balance
+}
+
+type RippleState struct {
+	NodeCommon     `mapstructure:",squash"`
+	FinalFields    RippleStateFinalFields
+	PreviousFields RippleStatePreviousFields
+}
+
+type AccountRootFinalFields struct {
+	Account    string
+	Balance    string
+	Flags      uint32
+	OwnerCount uint32
+	Sequence   uint32
+}
+
+type AccountRootPreviousFields struct {
+	Balance    string
+	OwnerCount uint32
+	Sequence   uint32
+}
+
+type AccountRoot struct {
+	NodeCommon     `mapstructure:",squash"`
+	FinalFields    AccountRootFinalFields
+	PreviousFields AccountRootPreviousFields
 }
