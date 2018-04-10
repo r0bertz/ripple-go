@@ -19,3 +19,9 @@ go_repository(
     tag = "v1.2.0",
     importpath = "github.com/gorilla/websocket",
 )
+
+go_repository(
+    name = "com_github_mitchellh_mapstructure",
+    commit = "b4575eea38cca1123ec2dc90c26529b5c5acfcff",
+    importpath = "github.com/mitchellh/mapstructure",
+)
