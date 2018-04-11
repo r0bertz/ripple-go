@@ -136,7 +136,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if len(content) == 0 {
-			log.Fatal("Emtpy ", *checkpoint)
+			log.Fatalf("Empty checkpoint file %s", *checkpoint)
 		}
 		txID = string(content)
 	} else {
