@@ -14,7 +14,7 @@ func TestMain(m *testing.M) {
 
 func TestDate(t *testing.T) {
 	tcs := []struct {
-		second uint
+		second uint32
 		expect string
 	}{
 		{
