@@ -85,7 +85,7 @@ type Transaction struct {
 	TxnSignature       string
 	Date               uint32
 	Hash               string
-	Ledger_index       uint32
+	LedgerIndex        uint32 `mapstructure:"ledger_index"`
 	Meta               Meta
 	Validated          bool
 }
@@ -105,10 +105,10 @@ type Request struct {
 }
 
 // NewRequest returns a tx.Request.
-func NewRequest(transaction string) *Request {
+func NewRequest(txID string) *Request {
 	return &Request{
 		Command:     "tx",
-		Transaction: transaction,
+		Transaction: txID,
 		Binary:      false,
 	}
 }
