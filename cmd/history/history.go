@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
+	"github.com/r0bertz/ripple/tx"
 	"github.com/r0bertz/ripple/wss"
 )
 
@@ -19,7 +20,7 @@ var (
 	lastN      = flag.Int64("last_n", -1, "Show the last N transactions only")
 )
 
-type AccountInfoRequest struct {
+type accountInfoRequest struct {
 	Command     string `json:"command"`
 	Account     string `json:"account"`
 	Strict      bool   `json:"strict"`
@@ -27,27 +28,13 @@ type AccountInfoRequest struct {
 	Queue       bool   `json:"queue"`
 }
 
-func NewAccountInfoRequest(account string) *AccountInfoRequest {
+func newAccountInfoRequest(account string) *AccountInfoRequest {
 	return &AccountInfoRequest{
 		Command:     "account_info",
 		Account:     account,
 		Strict:      true,
 		LedgerIndex: "current",
 		Queue:       true,
-	}
-}
-
-type TxRequest struct {
-	Command     string `json:"command"`
-	Transaction string `json:"transaction"`
-	Binary      bool   `json:"binary"`
-}
-
-func NewTxRequest(transaction string) *TxRequest {
-	return &TxRequest{
-		Command:     "tx",
-		Transaction: transaction,
-		Binary:      false,
 	}
 }
 
@@ -68,7 +55,7 @@ func NewTxRequest(transaction string) *TxRequest {
 // 		},
 //       ],
 // }
-func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
+func previousTxnIDAffectsAccountRoot(c *websocket.Conn) (string, error) {
 	i, err := wss.Receive(c)
 	if err != nil {
 		return "", err
@@ -106,7 +93,7 @@ func previousTxnIdAffectsAccountRoot(c *websocket.Conn) (string, error) {
 //	Sequence:3544
 //	Flags:0
 // ]
-func previousTxnIdInAccountData(c *websocket.Conn) (string, error) {
+func previousTxnIDInAccountData(c *websocket.Conn) (string, error) {
 	i, err := wss.Receive(c)
 	if err != nil {
 		return "", err
@@ -149,7 +136,7 @@ func main() {
 		}
 	}
 	for {
-		if err := wss.Send(c, NewTxRequest(txID)); err != nil {
+		if err := wss.Send(c, tx.Request(txID)); err != nil {
 			log.Fatal(err)
 		}
 		txID, err = previousTxnIdAffectsAccountRoot(c)
