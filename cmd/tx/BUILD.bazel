@@ -5,7 +5,10 @@ go_library(
     srcs = ["tx.go"],
     importpath = "github.com/r0bertz/ripple/cmd/tx",
     visibility = ["//visibility:private"],
-    deps = ["//wss:go_default_library"],
+    deps = [
+        "//tx:go_default_library",
+        "//wss:go_default_library",
+    ],
 )
 
 go_binary(

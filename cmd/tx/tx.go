@@ -6,32 +6,19 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/r0bertz/ripple/tx"
 	"github.com/r0bertz/ripple/wss"
 )
 
 var (
 	addr = flag.String("addr", "s2.ripple.com:443", "wss service address")
-	tx   = flag.String("tx", "", "ripple transaction")
+	txID = flag.String("tx", "", "ripple transaction")
 )
-
-type TxRequest struct {
-	Command     string `json:"command"`
-	Transaction string `json:"transaction"`
-	Binary      bool   `json:"binary"`
-}
-
-func NewTxRequest(transaction string) *TxRequest {
-	return &TxRequest{
-		Command:     "tx",
-		Transaction: transaction,
-		Binary:      false,
-	}
-}
 
 func main() {
 	flag.Parse()
 
-	if *tx == "" {
+	if *txID == "" {
 		log.Fatal("--tx not set")
 	}
 
@@ -41,7 +28,7 @@ func main() {
 	}
 	defer c.Close()
 
-	if err := wss.Send(c, NewTxRequest(*tx)); err != nil {
+	if err := wss.Send(c, tx.NewRequest(*txID)); err != nil {
 		log.Fatal(err)
 	}
 	i, err := wss.Receive(c)

@@ -58,7 +58,7 @@ type AccountRootPreviousFields struct {
 	Sequence   uint32
 }
 
-// RippleState is one of the LedgerEntryType.
+// AccountRoot is one of the LedgerEntryType.
 type AccountRoot struct {
 	NodeCommon     `mapstructure:",squash"`
 	FinalFields    AccountRootFinalFields
@@ -90,10 +90,25 @@ type Transaction struct {
 	Validated          bool
 }
 
-// TransactionResponse is the response of rippled tx method.
-// https://ripple.com/build/rippled-apis/#tx
-type TransactionResponse struct {
+// Response is the response of rippled tx method. https://ripple.com/build/rippled-apis/#tx
+type Response struct {
 	Result Transaction
 	Status string
 	Type   string
+}
+
+// Request is the request of rippled tx method.
+type Request struct {
+	Command     string `json:"command"`
+	Transaction string `json:"transaction"`
+	Binary      bool   `json:"binary"`
+}
+
+// NewRequest returns a tx.Request.
+func NewRequest(transaction string) *Request {
+	return &Request{
+		Command:     "tx",
+		Transaction: transaction,
+		Binary:      false,
+	}
 }
