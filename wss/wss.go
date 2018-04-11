@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Send sends r to connection c.
 func Send(c *websocket.Conn, r interface{}) error {
 	message, err := json.Marshal(r)
 	if err != nil {
@@ -17,6 +18,7 @@ func Send(c *websocket.Conn, r interface{}) error {
 	return c.WriteMessage(websocket.TextMessage, message)
 }
 
+// Receive receives response from connection c.
 func Receive(c *websocket.Conn) (interface{}, error) {
 	var i interface{}
 	if err := c.ReadJSON(&i); err != nil {
@@ -25,6 +27,7 @@ func Receive(c *websocket.Conn) (interface{}, error) {
 	return i, nil
 }
 
+// Connect connects to wss server at addr.
 func Connect(addr string) (*websocket.Conn, *http.Response, error) {
 	u := url.URL{Scheme: "wss", Host: addr}
 	log.Printf("connecting to %s", u.String())

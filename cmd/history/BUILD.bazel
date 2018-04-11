@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/r0bertz/ripple/cmd/history",
     visibility = ["//visibility:private"],
     deps = [
+        "//tx:go_default_library",
         "//wss:go_default_library",
         "@com_github_gorilla_websocket//:go_default_library",
     ],

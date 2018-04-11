@@ -28,8 +28,8 @@ type accountInfoRequest struct {
 	Queue       bool   `json:"queue"`
 }
 
-func newAccountInfoRequest(account string) *AccountInfoRequest {
-	return &AccountInfoRequest{
+func newAccountInfoRequest(account string) *accountInfoRequest {
+	return &accountInfoRequest{
 		Command:     "account_info",
 		Account:     account,
 		Strict:      true,
@@ -127,19 +127,19 @@ func main() {
 		}
 		txID = string(content)
 	} else {
-		if err := wss.Send(c, NewAccountInfoRequest(*acct)); err != nil {
+		if err := wss.Send(c, newAccountInfoRequest(*acct)); err != nil {
 			log.Fatal(err)
 		}
 
-		if txID, err = previousTxnIdInAccountData(c); err != nil {
+		if txID, err = previousTxnIDInAccountData(c); err != nil {
 			log.Fatal(err)
 		}
 	}
 	for {
-		if err := wss.Send(c, tx.Request(txID)); err != nil {
+		if err := wss.Send(c, tx.NewRequest(txID)); err != nil {
 			log.Fatal(err)
 		}
-		txID, err = previousTxnIdAffectsAccountRoot(c)
+		txID, err = previousTxnIDAffectsAccountRoot(c)
 		if err != nil {
 			log.Fatal(err)
 		}
