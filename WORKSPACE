@@ -25,3 +25,41 @@ go_repository(
     commit = "b4575eea38cca1123ec2dc90c26529b5c5acfcff",
     importpath = "github.com/mitchellh/mapstructure",
 )
+
+go_repository(
+    name = "com_github_rubblelabs_ripple",
+    commit = "0e03ed41baca64e37507128bc593822292b3349b",
+    importpath = "github.com/rubblelabs/ripple",
+)
+
+go_repository(
+    name = "com_github_r0bertz_ripple",
+    commit = "8ab4d3845e06f4e99cde614b86bdbdb635de3e44",
+    importpath = "github.com/r0bertz/ripple",
+)
+
+go_repository(
+    name = "com_github_willf_bitset",
+    tag = "v1.1.3",
+    importpath = "github.com/willf/bitset",
+)
+
+go_repository(
+    name = "com_github_agl_ed25519",
+    commit = "5312a61534124124185d41f09206b9fef1d88403",
+    importpath = "github.com/agl/ed25519",
+)
+
+go_repository(
+    name = "com_github_btcsuite_btcd",
+    commit = "2be2f12b358dc57d70b8f501b00be450192efbc3",
+    importpath = "github.com/btcsuite/btcd",
+)
+
+go_repository(
+    name = "org_golang_x_crypto",
+    importpath = "golang.org/x/crypto",
+    strip_prefix="crypto-81e90905daefcd6fd217b62423c0908922eadb30",
+    type="zip",
+    urls=['https://codeload.github.com/golang/crypto/zip/81e90905daefcd6fd217b62423c0908922eadb30'],
+)

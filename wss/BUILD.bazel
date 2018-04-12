@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["wss.go"],
-    importpath = "github.com/r0bertz/ripple/wss",
+    importpath = "github.com/r0bertz/ripple-go/wss",
     visibility = ["//visibility:public"],
     deps = ["@com_github_gorilla_websocket//:go_default_library"],
 )

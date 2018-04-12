@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/r0bertz/ripple/tx"
-	"github.com/r0bertz/ripple/wss"
+	"github.com/r0bertz/ripple-go/tx"
+	"github.com/r0bertz/ripple-go/wss"
 )
 
 var (

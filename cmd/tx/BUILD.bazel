@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["tx.go"],
-    importpath = "github.com/r0bertz/ripple/cmd/tx",
+    importpath = "github.com/r0bertz/ripple-go/cmd/tx",
     visibility = ["//visibility:private"],
     deps = [
         "//tx:go_default_library",
@@ -14,6 +14,6 @@ go_library(
 go_binary(
     name = "tx",
     embed = [":go_default_library"],
-    importpath = "github.com/r0bertz/ripple/cmd/tx",
+    importpath = "github.com/r0bertz/ripple-go/cmd/tx",
     visibility = ["//visibility:public"],
 )
