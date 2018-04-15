@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["scan.go"],
+    importpath = "github.com/r0bertz/ripple-go/cmd/scan",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_r0bertz_ripple//data:go_default_library",
+        "@com_github_r0bertz_ripple//websockets:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "scan",
+    embed = [":go_default_library"],
+    importpath = "github.com/r0bertz/ripple-go/cmd/scan",
+    visibility = ["//visibility:public"],
+)
