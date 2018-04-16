@@ -59,7 +59,6 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 				r.Received = q
 			}
 		}
-		r.Hash = t.GetBase().Hash
 		return nil
 	}
 	return fmt.Errorf("not implemented. hash: %s", t.GetBase().Hash)

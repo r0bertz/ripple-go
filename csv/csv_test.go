@@ -15,14 +15,15 @@ func TestMain(m *testing.M) {
 
 func TestToString(t *testing.T) {
 	tcs := []struct {
+		format      string
 		transaction string
 		exp         string
 	}{
 		// TODO
 	}
 	for _, tc := range tcs {
-		got, err := NewRow(tc.transaction, account)
-		if err != nil {
+		got := Factory[tc.format]()
+		if err := got.New(tc.transaction, account); err != nil {
 			t.Errorf("%v", err)
 		}
 		if got.String() != tc.exp {
