@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/r0bertz/ripple-go/csv"
@@ -17,6 +18,7 @@ import (
 var (
 	dir     = flag.String("dir", "", "directory contains tx data")
 	account = flag.String("account", "", "ripple account")
+	format  = flag.String("format", "", "csv file format")
 )
 
 type fileSet struct {
@@ -65,6 +67,10 @@ func (f fileSet) save() error {
 func main() {
 	flag.Parse()
 
+	if _, ok := csv.Factory[*format]; !ok {
+		log.Fatalf("unsupported format: %s", *format)
+	}
+
 	files, err := ioutil.ReadDir(*dir)
 	if err != nil {
 		log.Fatal(err)
@@ -75,6 +81,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	errList := []string{}
+	var rows csv.Slice
 	for _, file := range files {
 		if s.contains(file.Name()) {
 			continue
@@ -83,19 +91,24 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		row, err := csv.NewRow(string(content), *account)
-		if err != nil {
-			if err.Error() == "not implemented" {
-				continue
-			}
-			if strings.HasPrefix(err.Error(), "hash") {
-				fmt.Println(err)
+		row := csv.Factory[*format]()
+		if err := row.New(string(content), *account); err != nil {
+			if strings.HasPrefix(err.Error(), "not implemented") {
+				errList = append(errList, err.Error())
 				continue
 			}
 			log.Fatal(err)
 		}
 		s.add(file.Name())
 		s.save()
-		fmt.Println(row.String())
+		rows = append(rows, row)
+	}
+	sort.Sort(rows)
+	for _, r := range rows {
+		fmt.Printf("%s\n", r)
+	}
+	sort.Strings(errList)
+	for _, r := range errList {
+		fmt.Fprintf(os.Stderr, "%s\n", r)
 	}
 }
