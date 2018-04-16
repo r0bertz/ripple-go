@@ -16,7 +16,6 @@ type CoinTrackerIO struct {
 	ReceivedCurrency data.Currency
 	Sent             data.Value
 	SentCurrency     data.Currency
-	Hash             data.Hash256
 }
 
 // New creates a Row from TransactionWithMetaData.
@@ -73,15 +72,13 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 //   * Sent Quantity
 //   * Currency (specify currency such as USD, GBP, EUR or coins, BTC or LTC)
 func (r CoinTrackerIO) String() string {
-	var rv string
 	if r.Received.IsZero() {
-		rv = fmt.Sprintf("%s,,,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Sent.Float(), r.SentCurrency)
+		return fmt.Sprintf("%s,,,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Sent.Float(), r.SentCurrency)
 	}
 	if r.Sent.IsZero() {
-		rv = fmt.Sprintf("%s,%.6f,%s,,", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency)
+		return fmt.Sprintf("%s,%.6f,%s,,", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency)
 	}
-	rv = fmt.Sprintf("%s,%.6f,%s,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency, r.Sent.Float(), r.SentCurrency)
-	return rv + fmt.Sprintf(",%s", r.Hash)
+	return fmt.Sprintf("%s,%.6f,%s,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency, r.Sent.Float(), r.SentCurrency)
 }
 
 // DateTime returns Date.
