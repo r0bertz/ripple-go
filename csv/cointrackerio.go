@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/r0bertz/ripple/data"
 )
 
 // CoinTrackerIO represents cointracker.io csv format.
 type CoinTrackerIO struct {
-	Date             time.Time
+	Base
 	Received         data.Value
 	ReceivedCurrency data.Currency
 	Sent             data.Value
@@ -50,6 +49,7 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 			return fmt.Errorf("more than 2 balances, hash: %s", t.GetBase().Hash)
 		}
 		r.Date = t.Date.Time()
+		r.Hash = t.GetBase().Hash
 		for c, q := range m {
 			if q.IsNegative() {
 				r.SentCurrency = c
@@ -78,9 +78,4 @@ func (r CoinTrackerIO) String() string {
 		return fmt.Sprintf("%s,%.6f,%s,,", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency)
 	}
 	return fmt.Sprintf("%s,%.6f,%s,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency, r.Sent.Float(), r.SentCurrency)
-}
-
-// DateTime returns Date.
-func (r CoinTrackerIO) DateTime() time.Time {
-	return r.Date
 }

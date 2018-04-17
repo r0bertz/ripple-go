@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/r0bertz/ripple/data"
 )
 
 // BitcoinTax represents bitcoin.tax csv format.
 type BitcoinTax struct {
-	Date        time.Time
+	Base
 	Source      string
 	Action      Action
 	Symbol      data.Currency
@@ -105,6 +104,7 @@ func (r *BitcoinTax) New(transaction, account string) error {
 			return fmt.Errorf("not implemented: no xrp or usd, hash: %s", t.GetBase().Hash)
 		}
 		r.Date = t.Date.Time()
+		r.Hash = t.GetBase().Hash
 		r.Symbol = symbol
 		if volume.IsNegative() {
 			r.Action = SELL
@@ -149,9 +149,4 @@ func (r BitcoinTax) String() string {
 		return fmt.Sprintf("%s,%s,%s,%s,,%s,,%.6f,", r.Date.Format("2006-01-02 15:04:05 -0700"), r.Source, r.Action, r.Symbol, r.Currency, r.Fee.Float())
 	}
 	return fmt.Sprintf("%s,%s,%s,%s,%.6f,%s,%.6f,%.6f,%s", r.Date.Format("2006-01-02 15:04:05 -0700"), r.Source, r.Action, r.Symbol, r.Volume.Float(), r.Currency, r.Price.Float(), r.Fee.Float(), r.FeeCurrency)
-}
-
-// DateTime returns Date.
-func (r BitcoinTax) DateTime() time.Time {
-	return r.Date
 }

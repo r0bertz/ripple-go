@@ -2,6 +2,7 @@ package csv
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/r0bertz/ripple/data"
@@ -53,11 +54,28 @@ type TxResponse struct {
 	Type   string
 }
 
+// Base contains fields common to all CSV formats.
+type Base struct {
+	Date time.Time
+	Hash data.Hash256
+}
+
+// TxURL returns the URL of the transaction that's associated with this Row.
+func (b Base) TxURL() string {
+	return fmt.Sprintf("https://xrpcharts.ripple.com/#/transactions/%s", b.Hash)
+}
+
+// DateTime returns Date
+func (b Base) DateTime() time.Time {
+	return b.Date
+}
+
 // Row represents one row in csv.
 type Row interface {
 	New(transaction, account string) error
-	DateTime() time.Time
 	String() string
+	TxURL() string
+	DateTime() time.Time
 }
 
 func accountRootBalanceChangeEqualsFee(t websockets.TxResult, account string) error {

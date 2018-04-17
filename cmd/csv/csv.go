@@ -19,6 +19,7 @@ var (
 	dir     = flag.String("dir", "", "directory contains tx data")
 	account = flag.String("account", "", "ripple account")
 	format  = flag.String("format", "", "csv file format")
+	printTx = flag.Bool("print_tx", false, "whether to print an URL to the transaction in the last column")
 )
 
 type fileSet struct {
@@ -105,7 +106,11 @@ func main() {
 	}
 	sort.Sort(rows)
 	for _, r := range rows {
-		fmt.Printf("%s\n", r)
+		s := fmt.Sprintf("%s", r)
+		if *printTx {
+			s += fmt.Sprintf(",%s", r.TxURL())
+		}
+		fmt.Println(s)
 	}
 	sort.Strings(errList)
 	for _, r := range errList {
