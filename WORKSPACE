@@ -34,7 +34,7 @@ go_repository(
 
 go_repository(
     name = "com_github_r0bertz_ripple",
-    commit = "HEAD",
+    commit = "5dafcaeab1428c262f9df70c7fd4ba62bb56a99c",
     importpath = "github.com/r0bertz/ripple",
 )
 

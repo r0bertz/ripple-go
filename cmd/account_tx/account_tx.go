@@ -43,10 +43,20 @@ func main() {
 			continue
 		}
 		m := map[data.Currency]data.Value{}
-		for _, balance := range balances {
-			if balance.Account.Equals(*acct) {
-				m[balance.Currency] = balance.Change
+		b, ok := balances[*acct]
+		if !ok {
+			continue
+		}
+		for _, balance := range []data.Balance(*b) {
+			if c, ok := m[balance.Currency]; ok {
+				v, err := m[balance.Currency].Add(c)
+				if err != nil {
+					log.Fatal(err)
+				}
+				m[balance.Currency] = *v
+				continue
 			}
+			m[balance.Currency] = balance.Change
 		}
 		var (
 			dividend         data.Value
