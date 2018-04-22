@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"text/tabwriter"
 
 	"github.com/r0bertz/ripple/data"
 	"github.com/r0bertz/ripple/websockets"
@@ -28,7 +30,47 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+
 	for t := range remote.AccountTx(*acct, 10, -1, -1) {
-		fmt.Println(t.GetBase().Hash)
+		balances, err := t.Balances()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(balances) == 0 {
+			continue
+		}
+		m := map[data.Currency]data.Value{}
+		for _, balance := range balances {
+			if balance.Account.Equals(*acct) {
+				m[balance.Currency] = balance.Change
+			}
+		}
+		var (
+			dividend         data.Value
+			dividendCurrency data.Currency
+			divisor          data.Value
+			divisorCurrency  data.Currency
+		)
+		for c, v := range m {
+			if c.IsNative() {
+				divisor = v
+				divisorCurrency = c
+				continue
+			}
+			dividend = v
+			dividendCurrency = c
+		}
+		ratio, _ := data.NewValue("0", false)
+		if len(m) == 2 {
+			ratio, err = dividend.Ratio(divisor)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", t.Date, dividendCurrency, dividend, divisorCurrency, divisor, ratio.Negate())
 	}
+	w.Flush()
 }

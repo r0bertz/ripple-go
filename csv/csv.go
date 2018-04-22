@@ -56,18 +56,17 @@ type TxResponse struct {
 
 // Base contains fields common to all CSV formats.
 type Base struct {
-	Date time.Time
-	Hash data.Hash256
+	TxResult websockets.TxResult
 }
 
 // TxURL returns the URL of the transaction that's associated with this Row.
 func (b Base) TxURL() string {
-	return fmt.Sprintf("https://xrpcharts.ripple.com/#/transactions/%s", b.Hash)
+	return fmt.Sprintf("https://xrpcharts.ripple.com/#/transactions/%s", b.TxResult.GetBase().Hash)
 }
 
 // DateTime returns Date
 func (b Base) DateTime() time.Time {
-	return b.Date
+	return b.TxResult.Date.Time()
 }
 
 // Row represents one row in csv.

@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"encoding/gob"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
-	"sort"
 	"strings"
 
 	"github.com/r0bertz/ripple-go/csv"
@@ -103,17 +101,5 @@ func main() {
 		s.add(file.Name())
 		s.save()
 		rows = append(rows, row)
-	}
-	sort.Sort(rows)
-	for _, r := range rows {
-		s := fmt.Sprintf("%s", r)
-		if *printTx {
-			s += fmt.Sprintf(",%s", r.TxURL())
-		}
-		fmt.Println(s)
-	}
-	sort.Strings(errList)
-	for _, r := range errList {
-		fmt.Fprintf(os.Stderr, "%s\n", r)
 	}
 }

@@ -34,7 +34,7 @@ go_repository(
 
 go_repository(
     name = "com_github_r0bertz_ripple",
-    commit = "cbec9a3c7ca566b41913ce061c9e158a298009fb",
+    commit = "HEAD",
     importpath = "github.com/r0bertz/ripple",
 )
 
@@ -62,4 +62,10 @@ go_repository(
     strip_prefix="crypto-81e90905daefcd6fd217b62423c0908922eadb30",
     type="zip",
     urls=['https://codeload.github.com/golang/crypto/zip/81e90905daefcd6fd217b62423c0908922eadb30'],
+)
+
+go_repository(
+    name = "com_github_golang_collections_collections",
+    commit = "604e922904d35e97f98a774db7881f049cd8d970",
+    importpath = "github.com/golang-collections/collections",
 )

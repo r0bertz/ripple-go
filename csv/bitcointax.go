@@ -3,6 +3,7 @@ package csv
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/r0bertz/ripple/data"
@@ -23,6 +24,7 @@ type BitcoinTax struct {
 
 // New creates a Row from TransactionWithMetaData.
 func (r *BitcoinTax) New(transaction, account string) error {
+	r.Source = "XRP Ledger"
 	var resp TxResponse
 	dec := json.NewDecoder(strings.NewReader(transaction))
 	if err := dec.Decode(&resp); err != nil {
@@ -55,7 +57,7 @@ func (r *BitcoinTax) New(transaction, account string) error {
 				m[b.Currency] = b.Change
 			}
 		}
-		if len(m) < 2 {
+		if len(m) == 0 {
 			// if err := accountRootBalanceChangeEqualsFee(t, account); err != nil {
 			// 	return fmt.Errorf("not implemented: %v, hash: %s", err, t.GetBase().Hash)
 			// }
@@ -70,18 +72,60 @@ func (r *BitcoinTax) New(transaction, account string) error {
 			// return nil
 			return fmt.Errorf("not implemented. fee. hash: %s", t.GetBase().Hash)
 		}
+		if len(m) == 1 {
+			v, ok := m[xrp]
+			if !ok {
+				return fmt.Errorf("not implemented. depositing IOU. hash: %s", v, t.GetBase().Hash)
+			}
+			split, err := data.NewValue("580000000000", true)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if split.Less(v) {
+				return fmt.Errorf("not implemented. %s. hash: %s", v, t.GetBase().Hash)
+			}
+			if v.IsNegative() {
+				return fmt.Errorf("not implemented. sent out xrp %s, hash: %s", v, t.GetBase().Hash)
+			}
+			r.TxResult = t
+			r.Symbol = xrp
+			r.Action = BUY
+			r.Volume = v
+			r.Fee = t.GetBase().Fee
+			r.FeeCurrency = xrp
+			return nil
+		}
 		if len(m) != 2 {
 			for k, v := range m {
 				fmt.Printf("%s: %+v\n", k, v)
 			}
 			return fmt.Errorf("more than 2 balances, hash: %s", t.GetBase().Hash)
 		}
+		for _, node := range t.MetaData.AffectedNodes {
+			switch {
+			case node.CreatedNode != nil:
+				switch node.CreatedNode.LedgerEntryType {
+				case data.RIPPLE_STATE:
+					rs := node.CreatedNode.NewFields.(*data.RippleState)
+					if rs.LowLimit.Issuer.String() == account || rs.HighLimit.Issuer.String() == account {
+						fmt.Printf("%+v\n", rs)
+						fmt.Printf("http://www.ripplescan.com/transactions/%s\n", t.GetBase().Hash)
+						for k, v := range m {
+							fmt.Printf("%s %s\n", k, v)
+						}
+					}
+				}
+			}
+		}
 		var (
 			symbol data.Currency
 			volume data.Value
 			ok     bool
 		)
-		if _, ok = m[usd]; ok {
+		if _, ok = m[xrp]; ok {
+			symbol = xrp
+			volume = m[symbol]
+		} else if _, ok = m[usd]; ok {
 			for k := range m {
 				if !k.Equals(usd) {
 					symbol = k
@@ -92,19 +136,10 @@ func (r *BitcoinTax) New(transaction, account string) error {
 				return fmt.Errorf("not implemented: cny usd trade excluded, hash: %s", t.GetBase().Hash)
 			}
 			volume = m[symbol]
-		} else if _, ok = m[xrp]; ok {
-			for k := range m {
-				if !k.Equals(xrp) {
-					symbol = k
-					break
-				}
-			}
-			volume = m[symbol]
 		} else {
 			return fmt.Errorf("not implemented: no xrp or usd, hash: %s", t.GetBase().Hash)
 		}
-		r.Date = t.Date.Time()
-		r.Hash = t.GetBase().Hash
+		r.TxResult = t
 		r.Symbol = symbol
 		if volume.IsNegative() {
 			r.Action = SELL
@@ -145,8 +180,9 @@ func (r *BitcoinTax) New(transaction, account string) error {
 //   * Fee (any additional costs of the trade)
 //   * FeeCurrency (currency of fee if different than Currency)
 func (r BitcoinTax) String() string {
+	date := r.TxResult.Date.Time()
 	if r.Action == FEE {
-		return fmt.Sprintf("%s,%s,%s,%s,,%s,,%.6f,", r.Date.Format("2006-01-02 15:04:05 -0700"), r.Source, r.Action, r.Symbol, r.Currency, r.Fee.Float())
+		return fmt.Sprintf("%s,%s,%s,%s,,%s,,%.6f,", date.Format("2006-01-02 15:04:05 -0700"), r.Source, r.Action, r.Symbol, r.Currency, r.Fee.Float())
 	}
-	return fmt.Sprintf("%s,%s,%s,%s,%.6f,%s,%.6f,%.6f,%s", r.Date.Format("2006-01-02 15:04:05 -0700"), r.Source, r.Action, r.Symbol, r.Volume.Float(), r.Currency, r.Price.Float(), r.Fee.Float(), r.FeeCurrency)
+	return fmt.Sprintf("%s,%s,%s,%s,%.6f,%s,%.6f,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), r.Source, r.Action, r.Symbol, r.Volume.Float(), r.Currency, r.Price.Float(), r.Fee.Float(), r.FeeCurrency)
 }

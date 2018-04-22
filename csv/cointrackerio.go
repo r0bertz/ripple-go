@@ -48,8 +48,7 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 			}
 			return fmt.Errorf("more than 2 balances, hash: %s", t.GetBase().Hash)
 		}
-		r.Date = t.Date.Time()
-		r.Hash = t.GetBase().Hash
+		r.TxResult = t
 		for c, q := range m {
 			if q.IsNegative() {
 				r.SentCurrency = c
@@ -71,11 +70,12 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 //   * Sent Quantity
 //   * Currency (specify currency such as USD, GBP, EUR or coins, BTC or LTC)
 func (r CoinTrackerIO) String() string {
+	date := r.TxResult.Date.Time()
 	if r.Received.IsZero() {
-		return fmt.Sprintf("%s,,,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Sent.Float(), r.SentCurrency)
+		return fmt.Sprintf("%s,,,%.6f,%s", date.Format("01/02/2006 15:04:05"), r.Sent.Float(), r.SentCurrency)
 	}
 	if r.Sent.IsZero() {
-		return fmt.Sprintf("%s,%.6f,%s,,", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency)
+		return fmt.Sprintf("%s,%.6f,%s,,", date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency)
 	}
-	return fmt.Sprintf("%s,%.6f,%s,%.6f,%s", r.Date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency, r.Sent.Float(), r.SentCurrency)
+	return fmt.Sprintf("%s,%.6f,%s,%.6f,%s", date.Format("01/02/2006 15:04:05"), r.Received.Float(), r.ReceivedCurrency, r.Sent.Float(), r.SentCurrency)
 }
