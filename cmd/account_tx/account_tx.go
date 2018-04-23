@@ -14,6 +14,7 @@ import (
 var (
 	addr    = flag.String("addr", "wss://s2.ripple.com:443", "wss service address")
 	account = flag.String("account", "", "ripple account")
+	limit   = flag.Int("limit", -1, "stop after getting this much transactions")
 )
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
 
+	sum := 0
 	for t := range remote.AccountTx(*acct, 10, -1, -1) {
 		balances, err := t.Balances()
 		if err != nil {
@@ -81,6 +83,10 @@ func main() {
 			}
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", t.Date, dividendCurrency, dividend, divisorCurrency, divisor, ratio.Negate())
+		sum++
+		if *limit > 0 && sum > *limit {
+			break
+		}
 	}
 	w.Flush()
 }
