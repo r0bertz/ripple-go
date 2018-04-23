@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/r0bertz/ripple-go/cmd/tx",
     visibility = ["//visibility:private"],
     deps = [
-        "//tx:go_default_library",
-        "//wss:go_default_library",
+        "@com_github_r0bertz_ripple//data:go_default_library",
+        "@com_github_r0bertz_ripple//websockets:go_default_library",
     ],
 )
 

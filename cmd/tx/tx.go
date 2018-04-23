@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/r0bertz/ripple-go/tx"
-	"github.com/r0bertz/ripple-go/wss"
+	"github.com/r0bertz/ripple/data"
+	"github.com/r0bertz/ripple/websockets"
 )
 
 var (
-	addr = flag.String("addr", "s2.ripple.com:443", "wss service address")
+	addr = flag.String("addr", "wss://s2.ripple.com:443", "wss service address")
 	txID = flag.String("tx", "", "ripple transaction")
 )
 
@@ -22,20 +22,19 @@ func main() {
 		log.Fatal("--tx not set")
 	}
 
-	c, _, err := wss.Connect(*addr)
+	remote, err := websockets.NewRemote(*addr)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Fatal(err)
 	}
-	defer c.Close()
 
-	if err := wss.Send(c, tx.NewRequest(*txID)); err != nil {
-		log.Fatal(err)
-	}
-	i, err := wss.Receive(c)
+	th, err := data.NewHash256(*txID)
 	if err != nil {
 		log.Fatal(err)
 	}
-	m := i.(map[string]interface{})
-	b, _ := json.MarshalIndent(m, "", "  ")
+	tx, err := remote.Tx(*th)
+	if err != nil {
+		log.Fatal(err)
+	}
+	b, _ := json.MarshalIndent(tx, "", "  ")
 	fmt.Println(string(b))
 }
