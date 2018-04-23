@@ -23,7 +23,7 @@ type BitcoinTax struct {
 }
 
 // New creates a Row from TransactionWithMetaData.
-func (r *BitcoinTax) New(transaction, account string) error {
+func (r *BitcoinTax) New(transaction string, account data.Account) error {
 	r.Source = "XRP Ledger"
 	var resp TxResponse
 	dec := json.NewDecoder(strings.NewReader(transaction))
@@ -33,44 +33,29 @@ func (r *BitcoinTax) New(transaction, account string) error {
 	t := resp.Result
 	switch t.GetTransactionType() {
 	case data.ACCOUNT_SET, data.TRUST_SET, data.OFFER_CANCEL:
-		// if err := accountRootBalanceChangeEqualsFee(t, account); err != nil {
-		// 	return fmt.Errorf("not implemented: %v: hash %s", err, t.GetBase().Hash)
-		// }
-		// if t.GetBase().Account.String() != account {
-		// 	return fmt.Errorf("not implemented: got account %s, expect %s: hash %s", t.GetBase().Account, account, t.GetBase().Hash)
-		// }
-		// r.Date = t.Date.Time()
-		// r.Action = FEE
-		// r.Symbol = xrp
-		// r.Currency = xrp
-		// r.Fee = t.GetBase().Fee
-		// return nil
 		return fmt.Errorf("not implemented. fee. hash: %s", t.GetBase().Hash)
 	case data.PAYMENT, data.OFFER_CREATE:
-		balances, err := t.Balances()
+		b, err := t.Balances()
 		if err != nil {
 			return fmt.Errorf("error getting balances: %v, hash: %s", err, t.GetBase().Hash)
 		}
-		m := map[data.Currency]data.Value{}
-		for _, b := range balances {
-			if b.Account.String() == account {
-				m[b.Currency] = b.Change
-			}
-		}
-		if len(m) == 0 {
-			// if err := accountRootBalanceChangeEqualsFee(t, account); err != nil {
-			// 	return fmt.Errorf("not implemented: %v, hash: %s", err, t.GetBase().Hash)
-			// }
-			// if t.GetBase().Account.String() != account {
-			// 	return fmt.Errorf("not implemented: got account %s, expect %s: %s", t.GetBase().Account, account, t.GetBase().Hash)
-			// }
-			// r.Date = t.Date.Time()
-			// r.Action = FEE
-			// r.Symbol = xrp
-			// r.Currency = xrp
-			// r.Fee = t.GetBase().Fee
-			// return nil
+		bs, ok := b[account]
+		if !ok {
 			return fmt.Errorf("not implemented. fee. hash: %s", t.GetBase().Hash)
+		}
+		m := map[data.Currency]data.Value{}
+		for _, b := range []data.Balance(*bs) {
+			c, ok := m[b.Currency]
+			if !ok {
+				m[b.Currency] = b.Change
+				continue
+
+			}
+			v, err := c.Add(b.Change)
+			if err != nil {
+				return fmt.Errorf("error adding balance changes %s and %s: %v, hash: %s", c, b.Change, err, t.GetBase().Hash)
+			}
+			m[b.Currency] = *v
 		}
 		if len(m) == 1 {
 			v, ok := m[xrp]
@@ -99,28 +84,11 @@ func (r *BitcoinTax) New(transaction, account string) error {
 			for k, v := range m {
 				fmt.Printf("%s: %+v\n", k, v)
 			}
-			return fmt.Errorf("more than 2 balances, hash: %s", t.GetBase().Hash)
-		}
-		for _, node := range t.MetaData.AffectedNodes {
-			switch {
-			case node.CreatedNode != nil:
-				switch node.CreatedNode.LedgerEntryType {
-				case data.RIPPLE_STATE:
-					rs := node.CreatedNode.NewFields.(*data.RippleState)
-					if rs.LowLimit.Issuer.String() == account || rs.HighLimit.Issuer.String() == account {
-						fmt.Printf("%+v\n", rs)
-						fmt.Printf("http://www.ripplescan.com/transactions/%s\n", t.GetBase().Hash)
-						for k, v := range m {
-							fmt.Printf("%s %s\n", k, v)
-						}
-					}
-				}
-			}
+			return fmt.Errorf("more than 2 currencies, hash: %s", t.GetBase().Hash)
 		}
 		var (
 			symbol data.Currency
 			volume data.Value
-			ok     bool
 		)
 		if _, ok = m[xrp]; ok {
 			symbol = xrp

@@ -18,7 +18,7 @@ type CoinTrackerIO struct {
 }
 
 // New creates a Row from TransactionWithMetaData.
-func (r *CoinTrackerIO) New(transaction, account string) error {
+func (r *CoinTrackerIO) New(transaction string, account data.Account) error {
 	var resp TxResponse
 	dec := json.NewDecoder(strings.NewReader(transaction))
 	if err := dec.Decode(&resp); err != nil {
@@ -33,11 +33,23 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 		if err != nil {
 			return fmt.Errorf("error getting balances: %v, hash: %s", err, t.GetBase().Hash)
 		}
+		bs, ok := balances[account]
+		if !ok {
+			return fmt.Errorf("not implemented. fee. hash: %s", t.GetBase().Hash)
+		}
 		m := map[data.Currency]data.Value{}
-		for _, b := range balances {
-			if b.Account.String() == account {
+		for _, b := range []data.Balance(*bs) {
+			c, ok := m[b.Currency]
+			if !ok {
 				m[b.Currency] = b.Change
+				continue
+
 			}
+			v, err := c.Add(b.Change)
+			if err != nil {
+				return fmt.Errorf("error adding balance changes %s and %s: %v, hash: %s", c, b.Change, err, t.GetBase().Hash)
+			}
+			m[b.Currency] = *v
 		}
 		if len(m) == 0 {
 			return fmt.Errorf("not implemented: no balance, %s, hash: %s", t.Date, t.GetBase().Hash)
@@ -46,7 +58,7 @@ func (r *CoinTrackerIO) New(transaction, account string) error {
 			for k, v := range m {
 				fmt.Printf("%s: %+v\n", k, v)
 			}
-			return fmt.Errorf("more than 2 balances, hash: %s", t.GetBase().Hash)
+			return fmt.Errorf("more than 2 currencies, hash: %s", t.GetBase().Hash)
 		}
 		r.TxResult = t
 		for c, q := range m {

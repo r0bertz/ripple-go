@@ -71,7 +71,7 @@ func (b Base) DateTime() time.Time {
 
 // Row represents one row in csv.
 type Row interface {
-	New(transaction, account string) error
+	New(transaction string, account data.Account) error
 	String() string
 	TxURL() string
 	DateTime() time.Time
