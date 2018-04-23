@@ -1,15 +1,25 @@
 package csv
 
 import (
+	"log"
 	"os"
 	"testing"
+
+	"github.com/r0bertz/ripple/data"
 )
 
 const (
-	account = ""
+	account = "rrrrrrrrrrrrrrrrrrrrBZbvji"
 )
 
+var acct *data.Account
+
 func TestMain(m *testing.M) {
+	var err error
+	acct, err = data.NewAccountFromAddress(account)
+	if err != nil {
+		log.Fatalf("Invalid account %s: %v", account, err)
+	}
 	os.Exit(m.Run())
 }
 
@@ -23,7 +33,7 @@ func TestToString(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		got := Factory[tc.format]()
-		if err := got.New(tc.transaction, account); err != nil {
+		if err := got.New(tc.transaction, *acct); err != nil {
 			t.Errorf("%v", err)
 		}
 		if got.String() != tc.exp {
