@@ -2,16 +2,18 @@ package main
 
 import (
 	"bytes"
+	"container/heap"
 	"encoding/gob"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"sort"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/r0bertz/ripple-go/csv"
 	"github.com/r0bertz/ripple/data"
 )
@@ -70,20 +72,22 @@ func (f fileSet) save() error {
 func main() {
 	flag.Parse()
 
-	if _, ok := csv.Factory[*format]; !ok {
-		log.Fatalf("unsupported format: %s", *format)
+	ff, ok := csv.FormatterFactory[*format]
+	if !ok {
+		glog.Fatalf("unsupported format: %s", *format)
 	}
+	formatter := ff()
 
 	acct, err := data.NewAccountFromAddress(*account)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	var ra []data.Account
 	if *related != "" {
 		for _, a := range strings.Split(*related, ",") {
 			r, err := data.NewAccountFromAddress(a)
 			if err != nil {
-				log.Fatal(err)
+				glog.Fatal(err)
 			}
 			ra = append(ra, *r)
 		}
@@ -91,41 +95,53 @@ func main() {
 
 	files, err := ioutil.ReadDir(*dir)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	s := newFileSet("done")
 	if err := s.load(); err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 
 	errList := []string{}
-	var rows csv.Slice
+	c := csv.New(*acct, ra)
 	for _, file := range files {
 		if s.contains(file.Name()) {
 			continue
 		}
 		content, err := ioutil.ReadFile(path.Join(*dir, file.Name()))
 		if err != nil {
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
-		row := csv.Factory[*format]()
-		if err := row.New(string(content), *acct, ra); err != nil {
+		var resp csv.TxResponse
+		dec := json.NewDecoder(strings.NewReader(string(content)))
+		if err := dec.Decode(&resp); err != nil {
+			glog.Fatalf("error decoding transaction: %v", err)
+		}
+		t := resp.Result
+		if err := c.Add(t.TransactionWithMetaData); err != nil {
 			if strings.HasPrefix(err.Error(), "not implemented") {
 				errList = append(errList, err.Error())
-				continue
+				goto out
 			}
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
+	out:
 		s.add(file.Name())
 		s.save()
-		rows = append(rows, row)
 	}
-	sort.Sort(rows)
-	for _, r := range rows {
-		s := fmt.Sprintf("%s", r)
+	fmt.Println(formatter.Header())
+	for c.Rows.Len() > 0 {
+		r := heap.Pop(&c.Rows).(csv.Row)
+		s, err := formatter.Format(r)
+		if err != nil {
+			if strings.HasPrefix(err.Error(), "not implemented") {
+				errList = append(errList, err.Error())
+			}
+			continue
+		}
 		if *printTx {
-			s += fmt.Sprintf(",%s", r.TxURL())
+			s += fmt.Sprintf(",%s", r.URL())
 		}
 		fmt.Println(s)
 	}

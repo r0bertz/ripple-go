@@ -1,8 +1,9 @@
 package csv
 
 import (
-	"errors"
+	"container/heap"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/r0bertz/ripple/data"
@@ -22,9 +23,9 @@ const (
 
 // Factory returns a function that return a Row in given Row type.
 var (
-	Factory = map[string]func() Row{
-		"bitcointax":     func() Row { return &BitcoinTax{} },
-		"cointracker.io": func() Row { return &CoinTrackerIO{} },
+	FormatterFactory = map[string]func() Formatter{
+		"bitcoin.tax":    func() Formatter { return &BitcoinTax{} },
+		"cointracker.io": func() Formatter { return &CoinTrackerIO{} },
 	}
 	xrp, _ = data.NewCurrency("XRP")
 	usd, _ = data.NewCurrency("USD")
@@ -54,60 +55,129 @@ type TxResponse struct {
 	Type   string
 }
 
-// Base contains fields common to all CSV formats.
-type Base struct {
-	TxResult websockets.TxResult
+// Row contains fields common to all CSV formats.
+type Row struct {
+	data.TransactionWithMetaData
+	// m maps Currency to changed value.
+	m map[data.Currency]data.Value
 }
 
-// TxURL returns the URL of the transaction that's associated with this Row.
-func (b Base) TxURL() string {
-	return fmt.Sprintf("http://ripplescan.com/transactions/%s", b.TxResult.GetBase().Hash)
+// URL returns the URL of the transaction that's associated with this Row.
+func (r Row) URL() string {
+	return fmt.Sprintf("http://ripplescan.com/transactions/%s", r.TransactionWithMetaData.GetBase().Hash)
 }
 
 // DateTime returns Date
-func (b Base) DateTime() time.Time {
-	return b.TxResult.Date.Time()
+func (r Row) DateTime() time.Time {
+	return r.TransactionWithMetaData.Date.Time()
 }
 
-// Row represents one row in csv.
-type Row interface {
-	New(transaction string, account data.Account, related []data.Account) error
-	String() string
-	TxURL() string
-	DateTime() time.Time
-}
+// Heap is a max heap of Rows
+type Heap []Row
 
-func accountRootBalanceChangeEqualsFee(t websockets.TxResult, account string) error {
-	for _, n := range t.MetaData.AffectedNodes {
-		node, final, previous, state := n.AffectedNode()
-		if state == data.Modified && node.LedgerEntryType == data.ACCOUNT_ROOT {
-			f := final.(*data.AccountRoot)
-			p := previous.(*data.AccountRoot)
-			if f != nil && p != nil && f.Balance != nil && p.Balance != nil && f.Account != nil && f.Account.String() == account {
-				diff, err := p.Balance.Subtract(*f.Balance)
-				if err != nil {
-					return err
-				}
-				if diff.Equals(t.GetBase().Fee) {
-					return nil
-				}
-				// Payment to account, etc.
-				return errors.New("account root balance change not equals to fee")
-			}
-		}
-	}
-	// Owner count change, etc.
-	return errors.New("no account root blance change")
-}
-
-// Slice is a slice of Rows.
-type Slice []Row
-
-// Len returns length of Slice.
-func (s Slice) Len() int { return len(s) }
+// Len returns length of Heap.
+func (h Heap) Len() int { return len(h) }
 
 // Swap swaps elements at i and j.
-func (s Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (h Heap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
 
-// Less returns true if element i have a smaller timestamp than element j.
-func (s Slice) Less(i, j int) bool { return s[i].DateTime().Before(s[j].DateTime()) }
+// Less returns true if element j have a smaller timestamp than element i.
+func (h Heap) Less(i, j int) bool { return h[j].DateTime().Before(h[i].DateTime()) }
+
+// Push pushes x on to heap.
+func (h *Heap) Push(x interface{}) {
+	// Push and Pop use pointer receivers because they modify the slice's length,
+	// not just its contents.
+	*h = append(*h, x.(Row))
+}
+
+// Pop pops the last row off heap.
+func (h *Heap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+// CSV represents all rows in a csv file.
+type CSV struct {
+	Rows    Heap
+	Account data.Account
+	Related []data.Account
+}
+
+// New returns a new CSV.
+func New(account data.Account, related []data.Account) *CSV {
+	rv := &CSV{
+		Rows:    Heap{},
+		Account: account,
+		Related: related,
+	}
+	heap.Init(&rv.Rows)
+	return rv
+}
+
+// Add adds a new transaction.
+func (c *CSV) Add(t data.TransactionWithMetaData) error {
+	switch t.GetTransactionType() {
+	case data.ACCOUNT_SET, data.TRUST_SET, data.OFFER_CANCEL:
+		return fmt.Errorf("not implemented. fee. hash: %s", t.GetBase().Hash)
+	case data.PAYMENT, data.OFFER_CREATE:
+		bm, err := t.Balances()
+		if err != nil {
+			return fmt.Errorf("error getting balances: %v, hash: %s", err, t.GetBase().Hash)
+		}
+		b, ok := bm[c.Account]
+		if !ok {
+			return fmt.Errorf("not implemented. fee. hash: %s", t.GetBase().Hash)
+		}
+		m := map[data.Currency]data.Value{}
+		for _, b := range []data.Balance(*b) {
+			c, ok := m[b.Currency]
+			if !ok {
+				m[b.Currency] = b.Change
+				continue
+
+			}
+			v, err := c.Add(b.Change)
+			if err != nil {
+				return fmt.Errorf("error adding balance changes %s and %s: %v, hash: %s", c, b.Change, err, t.GetBase().Hash)
+			}
+			m[b.Currency] = *v
+		}
+		if len(m) == 1 {
+			v, ok := m[xrp]
+			if !ok {
+				keys := reflect.ValueOf(m).MapKeys()
+				currency := keys[0].Interface().(data.Currency)
+				return fmt.Errorf("not implemented. depositing IOU %s %s. hash: %s", currency, m[currency], t.GetBase().Hash)
+			}
+			p := t.Transaction.(*data.Payment)
+			for _, a := range c.Related {
+				if p.Account.Equals(a) {
+					return fmt.Errorf("not implemented. payment from related account %s: %s. hash: %s", a, v, t.GetBase().Hash)
+				}
+				if p.Destination.Equals(a) {
+					return fmt.Errorf("not implemented. payment to related account %s: %s. hash: %s", a, v, t.GetBase().Hash)
+				}
+			}
+			if v.IsNegative() {
+				return fmt.Errorf("not implemented. sent out xrp %s, hash: %s", v, t.GetBase().Hash)
+			}
+		}
+		if len(m) > 2 {
+			return fmt.Errorf("more than 2 currencies: %+v, hash: %s", m, t.GetBase().Hash)
+		}
+		r := Row{TransactionWithMetaData: t, m: m}
+		heap.Push(&c.Rows, r)
+		return nil
+	}
+	return fmt.Errorf("not implemented. hash: %s", t.GetBase().Hash)
+}
+
+// Formatter prints csv file header and rows.
+type Formatter interface {
+	Header() string
+	Format(r Row) (string, error)
+}
