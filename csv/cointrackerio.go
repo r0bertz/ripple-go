@@ -18,7 +18,7 @@ type CoinTrackerIO struct {
 }
 
 // New creates a Row from TransactionWithMetaData.
-func (r *CoinTrackerIO) New(transaction string, account data.Account) error {
+func (r *CoinTrackerIO) New(transaction string, account data.Account, related []data.Account) error {
 	var resp TxResponse
 	dec := json.NewDecoder(strings.NewReader(transaction))
 	if err := dec.Decode(&resp); err != nil {

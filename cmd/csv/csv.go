@@ -19,6 +19,7 @@ import (
 var (
 	dir     = flag.String("dir", "", "directory contains tx data")
 	account = flag.String("account", "", "ripple account")
+	related = flag.String("related_accounts", "", "a comma-separated related ripple accounts")
 	format  = flag.String("format", "", "csv file format")
 	printTx = flag.Bool("print_tx", false, "whether to print an URL to the transaction in the last column")
 )
@@ -77,6 +78,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	var ra []data.Account
+	if *related != "" {
+		for _, a := range strings.Split(*related, ",") {
+			r, err := data.NewAccountFromAddress(a)
+			if err != nil {
+				log.Fatal(err)
+			}
+			ra = append(ra, *r)
+		}
+	}
 
 	files, err := ioutil.ReadDir(*dir)
 	if err != nil {
@@ -99,7 +110,7 @@ func main() {
 			log.Fatal(err)
 		}
 		row := csv.Factory[*format]()
-		if err := row.New(string(content), *acct); err != nil {
+		if err := row.New(string(content), *acct, ra); err != nil {
 			if strings.HasPrefix(err.Error(), "not implemented") {
 				errList = append(errList, err.Error())
 				continue

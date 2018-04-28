@@ -61,7 +61,7 @@ type Base struct {
 
 // TxURL returns the URL of the transaction that's associated with this Row.
 func (b Base) TxURL() string {
-	return fmt.Sprintf("https://xrpcharts.ripple.com/#/transactions/%s", b.TxResult.GetBase().Hash)
+	return fmt.Sprintf("http://ripplescan.com/transactions/%s", b.TxResult.GetBase().Hash)
 }
 
 // DateTime returns Date
@@ -71,7 +71,7 @@ func (b Base) DateTime() time.Time {
 
 // Row represents one row in csv.
 type Row interface {
-	New(transaction string, account data.Account) error
+	New(transaction string, account data.Account, related []data.Account) error
 	String() string
 	TxURL() string
 	DateTime() time.Time

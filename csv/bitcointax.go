@@ -23,7 +23,7 @@ type BitcoinTax struct {
 }
 
 // New creates a Row from TransactionWithMetaData.
-func (r *BitcoinTax) New(transaction string, account data.Account) error {
+func (r *BitcoinTax) New(transaction string, account data.Account, related []data.Account) error {
 	r.Source = "XRP Ledger"
 	var resp TxResponse
 	dec := json.NewDecoder(strings.NewReader(transaction))
@@ -61,6 +61,15 @@ func (r *BitcoinTax) New(transaction string, account data.Account) error {
 			v, ok := m[xrp]
 			if !ok {
 				return fmt.Errorf("not implemented. depositing IOU. hash: %s", v, t.GetBase().Hash)
+			}
+			p := t.Transaction.(*data.Payment)
+			for _, a := range related {
+				if p.Account.Equals(a) {
+					return fmt.Errorf("not implemented. payment from related account %s: %s. hash: %s", a, v, t.GetBase().Hash)
+				}
+				if p.Destination.Equals(a) {
+					return fmt.Errorf("not implemented. payment to related account %s: %s. hash: %s", a, v, t.GetBase().Hash)
+				}
 			}
 			split, err := data.NewValue("580000000000", true)
 			if err != nil {
