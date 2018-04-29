@@ -30,63 +30,65 @@ func (b BitcoinTax) Format(r Row) (string, error) {
 	t := r.TransactionWithMetaData
 	var (
 		Source      = "XRP Ledger"
+		FeeCurrency = xrp
+		Fee         = t.GetBase().Fee
 		Action      Action
-		Symbol      data.Currency
-		Volume      data.Value
-		Currency    data.Currency
-		Price       data.Value
-		Fee         data.Value
-		FeeCurrency data.Currency
+		Symbol      *data.Currency
+		Volume      *data.Value
+		Currency    *data.Currency
+		Price       *data.Value
+		err         error
 	)
-	var (
-		symbol data.Currency
-		volume data.Value
-	)
-	if _, ok := r.m[xrp]; ok {
-		symbol = xrp
-		volume = r.m[symbol]
+	if v, ok := r.m[xrp]; ok {
+		Symbol = &xrp
+		Volume = &v
 	} else if _, ok = r.m[usd]; ok {
-		for k := range r.m {
+		for k, v := range r.m {
 			if !k.Equals(usd) {
-				symbol = k
+				Symbol = &k
+				Volume = &v
 				break
 			}
 		}
-		if symbol.Equals(cny) {
+		if Symbol == nil {
+			return "", fmt.Errorf("usd deposit or withdrawal, hash: %s", t.GetBase().Hash)
+		}
+		if Symbol.Equals(cny) {
 			return "", fmt.Errorf("not implemented: cny usd trade excluded, hash: %s", t.GetBase().Hash)
 		}
-		volume = r.m[symbol]
 	} else {
 		return "", fmt.Errorf("not implemented: no xrp or usd, hash: %s", t.GetBase().Hash)
 	}
-	Symbol = symbol
-	if volume.IsNegative() {
+	if len(r.m) == 0 {
+		Action = FEE
+	} else if Volume.IsNegative() {
 		Action = SELL
-		Volume = *volume.Negate()
+		Volume = Volume.Negate()
 	} else {
 		Action = BUY
-		Volume = volume
 	}
 	for k := range r.m {
-		if !k.Equals(symbol) {
-			Currency = k
+		if !k.Equals(*Symbol) {
+			Currency = &k
 			break
 		}
 	}
-	ratio, err := r.m[Currency].Ratio(Volume)
-	if err != nil {
-		return "", fmt.Errorf("error calculating ratio: %v, hash: %s", err, t.GetBase().Hash)
+	if Currency != nil {
+		Price, err = r.m[*Currency].Ratio(*Volume)
+		if err != nil {
+			return "", fmt.Errorf("error calculating ratio: %v, hash: %s", err, t.GetBase().Hash)
+		}
+		if Price.IsNegative() {
+			Price = Price.Negate()
+		}
 	}
-	Price = *ratio
-	if Price.IsNegative() {
-		Price = *Price.Negate()
-	}
-	Fee = t.GetBase().Fee
-	FeeCurrency = xrp
 
 	date := t.Date.Time()
 	if Action == FEE {
-		return fmt.Sprintf("%s,%s,%s,%s,,%s,,%.6f,", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Currency, Fee.Float()), nil
+		return fmt.Sprintf("%s,%s,%s,%s,,,,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Fee.Float(), FeeCurrency), nil
+	}
+	if Currency == nil {
+		return fmt.Sprintf("%s,%s,%s,%s,%.6f,,,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Volume.Float(), Fee.Float(), FeeCurrency), nil
 	}
 	return fmt.Sprintf("%s,%s,%s,%s,%.6f,%s,%.6f,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Volume.Float(), Currency, Price.Float(), Fee.Float(), FeeCurrency), nil
 }
