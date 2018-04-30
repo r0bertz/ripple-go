@@ -1,9 +1,9 @@
 package csv
 
 import (
-	"container/heap"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/r0bertz/ripple/data"
@@ -72,50 +72,25 @@ func (r Row) DateTime() time.Time {
 	return r.TransactionWithMetaData.Date.Time()
 }
 
-// Heap is a max heap of Rows
-type Heap []Row
-
-// Len returns length of Heap.
-func (h Heap) Len() int { return len(h) }
-
-// Swap swaps elements at i and j.
-func (h Heap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-
-// Less returns true if element j have a smaller timestamp than element i.
-func (h Heap) Less(i, j int) bool { return h[j].DateTime().Before(h[i].DateTime()) }
-
-// Push pushes x on to heap.
-func (h *Heap) Push(x interface{}) {
-	// Push and Pop use pointer receivers because they modify the slice's length,
-	// not just its contents.
-	*h = append(*h, x.(Row))
-}
-
-// Pop pops the last row off heap.
-func (h *Heap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
 // CSV represents all rows in a csv file.
 type CSV struct {
-	Rows    Heap
+	Rows    []Row
 	Account data.Account
 	Related []data.Account
 }
 
 // New returns a new CSV.
 func New(account data.Account, related []data.Account) *CSV {
-	rv := &CSV{
-		Rows:    Heap{},
+	return &CSV{
+		Rows:    []Row{},
 		Account: account,
 		Related: related,
 	}
-	heap.Init(&rv.Rows)
-	return rv
+}
+
+// Sort sort Rows by time.
+func (c *CSV) Sort() {
+	sort.Slice(c.Rows, func(i, j int) bool { return c.Rows[i].DateTime().Before(c.Rows[j].DateTime()) })
 }
 
 // Add adds a new transaction.
@@ -170,7 +145,7 @@ func (c *CSV) Add(t data.TransactionWithMetaData) error {
 			return fmt.Errorf("more than 2 currencies: %+v, hash: %s", m, t.GetBase().Hash)
 		}
 		r := Row{TransactionWithMetaData: t, m: m}
-		heap.Push(&c.Rows, r)
+		c.Rows = append(c.Rows, r)
 		return nil
 	}
 	return fmt.Errorf("not implemented. hash: %s", t.GetBase().Hash)

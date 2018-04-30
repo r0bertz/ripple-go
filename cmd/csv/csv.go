@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/heap"
 	"encoding/gob"
 	"encoding/json"
 	"flag"
@@ -130,9 +129,9 @@ func main() {
 		s.add(file.Name())
 		s.save()
 	}
+	c.Sort()
 	fmt.Println(formatter.Header())
-	for c.Rows.Len() > 0 {
-		r := heap.Pop(&c.Rows).(csv.Row)
+	for _, r := range c.Rows {
 		s, err := formatter.Format(r)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "not implemented") {

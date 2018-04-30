@@ -88,7 +88,7 @@ func (b BitcoinTax) Format(r Row) (string, error) {
 		return fmt.Sprintf("%s,%s,%s,%s,,,,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Fee.Float(), FeeCurrency), nil
 	}
 	if Currency == nil {
-		return fmt.Sprintf("%s,%s,%s,%s,%.6f,,,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Volume.Float(), Fee.Float(), FeeCurrency), nil
+		return fmt.Sprintf("%s,%s,%s,%s,%.6f,XRP,0.000000,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Volume.Float(), Fee.Float(), FeeCurrency), nil
 	}
 	return fmt.Sprintf("%s,%s,%s,%s,%.6f,%s,%.6f,%.6f,%s", date.Format("2006-01-02 15:04:05 -0700"), Source, Action, Symbol, Volume.Float(), Currency, Price.Float(), Fee.Float(), FeeCurrency), nil
 }
