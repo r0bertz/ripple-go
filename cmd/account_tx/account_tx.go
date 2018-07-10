@@ -6,15 +6,17 @@ import (
 	"log"
 	"os"
 	"text/tabwriter"
+	"time"
 
 	"github.com/r0bertz/ripple/data"
 	"github.com/r0bertz/ripple/websockets"
 )
 
 var (
-	addr    = flag.String("addr", "wss://s2.ripple.com:443", "wss service address")
-	account = flag.String("account", "", "ripple account")
-	limit   = flag.Int("limit", -1, "stop after getting this much transactions")
+	addr     = flag.String("addr", "wss://s2.ripple.com:443", "wss service address")
+	account  = flag.String("account", "", "ripple account")
+	limit    = flag.Int("limit", -1, "stop after getting this much transactions")
+	timezone = flag.String("timezone", "America/Los_Angeles", "timezone used when printing time")
 )
 
 func main() {
@@ -22,6 +24,10 @@ func main() {
 
 	if *account == "" {
 		log.Fatal("--account not set")
+	}
+	location, err := time.LoadLocation(*timezone)
+	if err != nil {
+		log.Fatal(err)
 	}
 	acct, err := data.NewAccountFromAddress(*account)
 	if err != nil {
@@ -82,7 +88,7 @@ func main() {
 				log.Fatal(err)
 			}
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", t.Date, dividendCurrency, dividend, divisorCurrency, divisor, ratio.Negate())
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", t.Date.Time().In(location), dividendCurrency, dividend, divisorCurrency, divisor, ratio.Negate())
 		sum++
 		if *limit > 0 && sum > *limit {
 			break
